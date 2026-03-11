@@ -108,10 +108,10 @@ def make_cover(output_path: Path) -> None:
 
 
 def main() -> None:
-    out_dir = Path("output/xiaohongshu_流量与商业价值")
+    out_dir = Path("output/xiaohongshu_media_value")
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    make_cover(out_dir / "00_封面.png")
+    make_cover(out_dir / "00_cover.png")
 
     slides = [
         (
