@@ -12,6 +12,7 @@ STROKE = "#1F2430"
 MARGIN_X = 94
 CONTENT_WIDTH = WIDTH - MARGIN_X * 2
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PAGE_TOP_Y = int(HEIGHT * 0.20)
 
 FONT_FILES = {
     "regular": PROJECT_ROOT / "assets/fonts/SourceHanSansSC-Regular.otf",
@@ -79,6 +80,14 @@ def draw_center_text(draw: ImageDraw.ImageDraw, y: int, text: str, font: ImageFo
     return y + h
 
 
+def measure_block_height(draw: ImageDraw.ImageDraw, lines: list[str], font: ImageFont.FreeTypeFont, line_gap: int) -> int:
+    total = 0
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line if line else " ", font=font)
+        total += (bbox[3] - bbox[1]) + line_gap
+    return max(0, total - line_gap)
+
+
 def new_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
     img = Image.new("RGB", (WIDTH, HEIGHT), BG)
     draw = ImageDraw.Draw(img)
@@ -89,22 +98,38 @@ def new_canvas() -> tuple[Image.Image, ImageDraw.ImageDraw]:
 def make_cover(output_path: Path) -> None:
     img, draw = new_canvas()
     tag_font = load_font("medium", 44)
-    title_font = load_font("heavy", 138)
+    title_font = load_font("heavy", 132)
     subtitle_font = load_font("medium", 54)
-    brand_font = load_font("regular", 50)
+    brand_font = load_font("regular", 46)
 
-    y = 150
-    y = draw_center_text(draw, y, "内容商业观察报告", tag_font, ACCENT)
-    y += 88
+    tag_lines = ["大勺自媒体观察室"]
+    title_lines = ["一个账号怎样才算", "真正具备商业价值"]
+    subtitle_lines = ["流量账号 vs 商业账号"]
 
-    for line in ["为什么很多博主", "有流量", "却赚不到钱"]:
+    block_height = (
+        measure_block_height(draw, tag_lines, tag_font, 12)
+        + 72
+        + measure_block_height(draw, title_lines, title_font, 24)
+        + 46
+        + measure_block_height(draw, subtitle_lines, subtitle_font, 8)
+    )
+    y = (HEIGHT - block_height) // 2 + 60
+
+    for line in tag_lines:
+        y = draw_center_text(draw, y, line, tag_font, ACCENT)
+        y += 12
+    y += 60
+
+    for line in title_lines:
         y = draw_center_text(draw, y, line, title_font, FG)
-        y += 26
+        y += 24
 
-    y += 28
-    draw_center_text(draw, y, "流量 ≠ 商业价值", subtitle_font, MUTED)
+    y += 34
+    for line in subtitle_lines:
+        y = draw_center_text(draw, y, line, subtitle_font, MUTED)
+        y += 8
 
-    brand_text = "大勺自媒体观察室 · 2026"
+    brand_text = "内容生态观察 / 2026"
     draw_center_text(draw, HEIGHT - 200, brand_text, brand_font, ACCENT)
 
     img.save(output_path, format="PNG")
@@ -112,28 +137,29 @@ def make_cover(output_path: Path) -> None:
 
 def make_slide(output_path: Path, section: str, title: str, support: str, keyline: str) -> None:
     img, draw = new_canvas()
-    section_font = load_font("medium", 42)
-    title_font = load_font("heavy", 80)
-    support_font = load_font("regular", 44)
-    key_font = load_font("bold", 68)
+    section_font = load_font("medium", 40)
+    title_font = load_font("heavy", 72)
+    support_font = load_font("regular", 40)
+    key_font = load_font("bold", 60)
 
-    y = 92
+    # Shift all content lower for better balance.
+    y = PAGE_TOP_Y
     draw.text((MARGIN_X, y), section, font=section_font, fill=ACCENT)
-    y += 86
+    y += 80
 
     title_lines = wrap_text(draw, title, title_font, CONTENT_WIDTH)
-    y = draw_left_lines(draw, MARGIN_X, y, title_lines, title_font, FG, 18)
-    y += 20
+    y = draw_left_lines(draw, MARGIN_X, y, title_lines, title_font, FG, 16)
+    y += 16
 
     support_lines = wrap_text(draw, support, support_font, CONTENT_WIDTH - 50)
     line_height = draw.textbbox((0, 0), "中", font=support_font)[3]
-    block_height = max(1, len(support_lines)) * (line_height + 14)
+    block_height = max(1, len(support_lines)) * (line_height + 12)
     draw.line([(MARGIN_X, y + 2), (MARGIN_X, y + block_height - 10)], fill=ACCENT, width=8)
-    y = draw_left_lines(draw, MARGIN_X + 30, y, support_lines, support_font, MUTED, 14)
+    y = draw_left_lines(draw, MARGIN_X + 30, y, support_lines, support_font, MUTED, 12)
 
-    y += 60
+    y += 50
     key_lines = wrap_text(draw, keyline, key_font, CONTENT_WIDTH)
-    draw_left_lines(draw, MARGIN_X, y, key_lines, key_font, FG, 16)
+    draw_left_lines(draw, MARGIN_X, y, key_lines, key_font, FG, 14)
 
     img.save(output_path, format="PNG")
 
@@ -145,13 +171,48 @@ def main() -> None:
     make_cover(out_dir / "00_cover.png")
 
     pages = [
-        ("现象", "为什么很多博主有流量，却赚不到钱", "很多创作者默认：有流量就会赚钱", "现实是：两者并不等价"),
-        ("数据失衡", "很多账号数据很好，合作却很少", "点赞高、浏览高、粉丝不少，但商单稀缺", "高曝光，不等于高变现"),
-        ("底层逻辑", "平台与品牌，是两套系统", "平台追求传播效率，品牌追求商业确定性", "流量逻辑 ≠ 投放逻辑"),
-        ("品牌视角", "品牌真正关心三件事", "稳定人群、信任关系、消费场景", "缺一项，价值都会打折"),
-        ("流量来源", "情绪热点型流量，通常不稳定", "情绪、热点、娱乐、猎奇可以爆发", "但难沉淀长期购买力"),
-        ("高价值账号", "通常具备三个核心特征", "清晰人群 + 明确场景 + 长期信任", "这类账号商业价值更稳定"),
-        ("结论", "做内容要分清两件事", "流量是注意力，商业是信任关系", "先有信任，后有持续变现"),
+        (
+            "问题",
+            "一个账号怎样才算真正具备商业价值",
+            "很多创作者都会困惑：\n为什么有些账号粉丝不多，却经常有品牌合作？",
+            "而有些账号数据很好，却很难接到广告",
+        ),
+        (
+            "误区",
+            "商业合作看的\n不只是流量",
+            "品牌在选择账号时，更看三个东西：\n人群、内容结构、信任关系",
+            "流量只是起点，不是决策终点",
+        ),
+        (
+            "第一",
+            "人群是否清晰",
+            "品牌更关心：这些用户是谁。\n咖啡、露营、厨房、健身、旅行\n这类内容的人群往往非常明确",
+            "人群越清晰，投放越确定",
+        ),
+        (
+            "第二",
+            "内容是否稳定",
+            "今天做情绪、明天做热点、后天做娱乐。\n内容一直变化，品牌很难判断\n用户到底为什么关注你",
+            "稳定内容结构，才有稳定商业预期",
+        ),
+        (
+            "第三",
+            "有没有长期信任",
+            "很多账号流量来自一条爆款，\n但用户与创作者之间并没有建立关系",
+            "真正有商业价值的账号，\n往往都有稳定信任感",
+        ),
+        (
+            "本质",
+            "平台更容易给流量\n商业更看重信任",
+            "流量可以很快出现，也会很快消失。\n但信任，往往需要时间沉淀",
+            "短期看播放，长期看关系",
+        ),
+        (
+            "总结",
+            "流量是注意力\n商业是信任",
+            "真正有商业价值的账号，\n往往建立在信任之上",
+            "下一篇：为什么很多博主粉丝很多\n却依然接不到广告？",
+        ),
     ]
 
     for idx, page in enumerate(pages, start=1):
